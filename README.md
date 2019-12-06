@@ -1,20 +1,44 @@
 # Introduction 
-TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
+This is the repository that contains AzureStorageBackup functionality.
 
 # Getting Started
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-1.	Installation process
-2.	Software dependencies
-3.	Latest releases
-4.	API references
+1. Pull code
+2. Restore packages
+3. Build solution
 
 # Build and Test
-TODO: Describe and show how to build your code and run the tests. 
+Run dotnet pack to generate a nuget package
 
-# Contribute
-TODO: Explain how other users and developers can contribute to make your code better. 
+# How to restore table storage
+This cannot be done using the package. 
+    AzCopy /Source:https://myaccount.blob.core.windows.net/mycontainer/
+            /SourceKey:key1
+            /Dest:https://myaccount.table.core.windows.net/mytable/ 
+            /DestKey:key2 
+            /Manifest:"myaccount_mytable_20140103T112020.manifest"
+            /EntityOperation:InsertOrMerge
 
-If you want to learn more about creating good readme files then refer the following [guidelines](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-a-readme?view=azure-devops). You can also seek inspiration from the below readme files:
-- [ASP.NET Core](https://github.com/aspnet/Home)
-- [Visual Studio Code](https://github.com/Microsoft/vscode)
-- [Chakra Core](https://github.com/Microsoft/ChakraCore)
+# How to create a backup
+
+## Initialize the backup storage client
+* log should either be null or an implementation of ILogger
+* sourceAccountName: the name of the storage account, no connectionstring or url
+* sourceAccountKey: the SAS key as can be retrieved for the Azure Portal
+
+var backupAzureStorage = new Luminis.AzureStorageBackup.BackupAzureStorage(log, sourceAccountName, sourceAccountKey);
+
+## Backup table storage
+* sourceTables: a list of string (ie: new [] { "table1", "table2" })
+* destinationAccountName: the name of the storage account, no connectionstring or url
+* destinationAccountKey: the SAS key as can be retrieved for the Azure Portal
+* destinationContainerName: the name of the container where the backup should go to. This container is created if it does not exist yet.
+
+await backupAzureStorage.BackupAzureTablesToBlobStorage(sourceTables, destinationAccountName, destinationKey, destinationContainerName);
+
+## Backup blob storage
+* sourceContainers: a list of string (ie: new [] { "container1", "container2" })
+* destinationAccountName: the name of the storage account, no connectionstring or url
+* destinationAccountKey: the SAS key as can be retrieved for the Azure Portal
+* destinationContainerName: the name of the container where the backup should go to. This container is created if it does not exist yet.
+
+await backupAzureStorage.BackupBlobStorage(containers, destinationAccountName, destinationKey, destinationContainerName);

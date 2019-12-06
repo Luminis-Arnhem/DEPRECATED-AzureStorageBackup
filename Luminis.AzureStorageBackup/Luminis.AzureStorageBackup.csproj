@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Luminis.AzureStorageBackup</PackageId>
+    <Version>0.1.2</Version>
+    <Authors>Hilmar Jansen</Authors>
+    <Company>Luminis Arnhem</Company>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>Luminis.AzureStorageBackup</AssemblyName>
+    <RootNamespace>Luminis.AzureStorageBackup</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.1.1" />
+    <PackageReference Include="WindowsAzure.Storage" Version="8.7.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="lib\AzCopy\**">
+      <Pack>true</Pack>
+      <PackagePath>contentFiles\any\any\azcopy\</PackagePath>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+  </ItemGroup>
+</Project>
