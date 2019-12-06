@@ -118,7 +118,7 @@
                     logger?.LogInformation(infoMessage);
                 }
 
-                if (string.IsNullOrEmpty(errorMessage))
+                if (!string.IsNullOrEmpty(errorMessage))
                 {
                     logger?.LogError(errorMessage);
                     // An error was logged by the external program. Throw this as exception for this task.
