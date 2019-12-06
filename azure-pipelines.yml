@@ -42,8 +42,8 @@ stages:
         command: 'pack'
         packagesToPack: '**/*.csproj'
         configuration: '$(buildConfiguration)'
-        packDirectory: '$(Build.ArtifactStagingDirectory)'
-        arguments:  -p:Version=$(GitVersion.NuGetVersionV2)
+        versioningScheme: 'byEnvVar'
+        versionEnvVar: 'GitVersion.NuGetVersionV2'
 
     - publish: $(Build.ArtifactStagingDirectory)
       artifact: $(artifactName)
