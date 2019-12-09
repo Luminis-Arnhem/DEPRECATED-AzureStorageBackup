@@ -41,7 +41,7 @@
             this.logger = logger;
 
             this.locationOfAzCopy = Directory.GetFiles(rootDir, "azcopy.exe", SearchOption.AllDirectories).First();
-            logger.LogInformation($"Using azcopy from {locationOfAzCopy}.");
+            logger?.LogInformation($"Using azcopy from {locationOfAzCopy}.");
 
             this.sourceAccountName = sourceAccountName;
             this.sourceAccountKey = sourceAccountKey;
