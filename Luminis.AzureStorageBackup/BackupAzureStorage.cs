@@ -1,26 +1,24 @@
 ﻿namespace Luminis.AzureStorageBackup
 {
+    using Microsoft.Extensions.Logging;
+    using Microsoft.WindowsAzure.Storage;
+    using Microsoft.WindowsAzure.Storage.Blob;
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.IO;
     using System.Linq;
-    using System.Reflection;
     using System.Threading.Tasks;
-    using Microsoft.Extensions.Logging;
-    using Microsoft.WindowsAzure.Storage;
-    using Microsoft.WindowsAzure.Storage.Blob;
 
     public class BackupAzureStorage
     {
-        private const string AzCopy = "azcopy.exe";
         private const int AzCopyDelay = 1000;
 
         private readonly ILogger logger;
         private readonly string sourceAccountName;
         private readonly string sourceAccountKey;
         private static CloudBlobContainer blobContainer;
-        private readonly string locationOfAzCopy = Path.Combine(Directory.GetParent(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)).FullName, "azcopy", AzCopy);
+        private readonly string locationOfAzCopy;
 
         /// <summary>
         /// Constructor for BackupAzureStorage.
@@ -28,11 +26,23 @@
         /// <param name="logger">The logger to use.</param>
         /// <param name="sourceAccountName">The name of the storage account that holds the tables and blobs that should be backuped.</param>
         /// <param name="sourceKey">The key of the storage account.</param>
-        public BackupAzureStorage(ILogger logger, string sourceAccountName, string sourceAccountKey)
+        public BackupAzureStorage(ILogger logger, string rootDir, string sourceAccountName, string sourceAccountKey)
         {
-            if (string.IsNullOrWhiteSpace(sourceAccountName)) throw new ArgumentNullException(nameof(sourceAccountName));
-            if (string.IsNullOrWhiteSpace(sourceAccountKey)) throw new ArgumentNullException(nameof(sourceAccountKey));
+            if (string.IsNullOrWhiteSpace(sourceAccountName))
+            {
+                throw new ArgumentNullException(nameof(sourceAccountName));
+            }
+
+            if (string.IsNullOrWhiteSpace(sourceAccountKey))
+            {
+                throw new ArgumentNullException(nameof(sourceAccountKey));
+            }
+
             this.logger = logger;
+
+            this.locationOfAzCopy = Directory.GetFiles(rootDir, "azcopy.exe", SearchOption.AllDirectories).First();
+            logger.LogInformation($"Using azcopy from {locationOfAzCopy}.");
+
             this.sourceAccountName = sourceAccountName;
             this.sourceAccountKey = sourceAccountKey;
         }
@@ -47,22 +57,37 @@
         /// <returns></returns>
         public async Task BackupAzureTablesToBlobStorage(IEnumerable<string> sourceTables, string targetAccountName, string targetAccountKey, string targetContainerName)
         {
-            if (sourceTables == null || !sourceTables.Any()) throw new ArgumentNullException(nameof(sourceTables));
-            if (string.IsNullOrWhiteSpace(targetAccountName)) throw new ArgumentNullException(nameof(targetAccountName));
-            if (string.IsNullOrWhiteSpace(targetAccountKey)) throw new ArgumentNullException(nameof(targetAccountKey));
-            if (string.IsNullOrWhiteSpace(targetContainerName)) throw new ArgumentNullException(nameof(targetContainerName));
+            if (sourceTables == null || !sourceTables.Any())
+            {
+                throw new ArgumentNullException(nameof(sourceTables));
+            }
+
+            if (string.IsNullOrWhiteSpace(targetAccountName))
+            {
+                throw new ArgumentNullException(nameof(targetAccountName));
+            }
+
+            if (string.IsNullOrWhiteSpace(targetAccountKey))
+            {
+                throw new ArgumentNullException(nameof(targetAccountKey));
+            }
+
+            if (string.IsNullOrWhiteSpace(targetContainerName))
+            {
+                throw new ArgumentNullException(nameof(targetContainerName));
+            }
 
             await CreateBlobContainerIfItDoesntExist(targetAccountName, targetAccountKey, targetContainerName);
 
-            logger?.LogInformation($"BackupAzureTablesToBlobStorage - From: {sourceAccountName}, Tables: {string.Join(", ", sourceTables)} to {targetAccountName}/{targetContainerName}");
+            this.logger?.LogInformation($"BackupAzureTablesToBlobStorage - From: {this.sourceAccountName}, Tables: {string.Join(", ", sourceTables)} to {targetAccountName}/{targetContainerName}");
 
             foreach (var sourceTable in sourceTables)
             {
-                var arguments = $@"/source:https://{sourceAccountName}.table.core.windows.net/{sourceTable} /sourceKey:{sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/ /Destkey:{targetAccountKey} /Y";
+                var arguments = $@"/source:https://{this.sourceAccountName}.table.core.windows.net/{sourceTable} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/ /Destkey:{targetAccountKey} /Y";
 
-                await RunAzCopyAsync(locationOfAzCopy, arguments);
+                await RunAzCopyAsync(this.locationOfAzCopy, arguments);
             }
-            logger?.LogInformation("BackupAzureTablesToBlobStorage - Done");
+            this.logger?.LogInformation("BackupAzureTablesToBlobStorage - Done");
         }
 
         /// <summary>
@@ -75,21 +100,36 @@
         /// <returns></returns>
         public async Task BackupBlobStorage(IEnumerable<string> sourceContainers, string targetAccountName, string targetAccountKey, string targetContainerName)
         {
-            if (sourceContainers == null || !sourceContainers.Any()) throw new ArgumentNullException(nameof(sourceContainers));
-            if (string.IsNullOrWhiteSpace(targetAccountName)) throw new ArgumentNullException(nameof(targetAccountName));
-            if (string.IsNullOrWhiteSpace(targetAccountKey)) throw new ArgumentNullException(nameof(targetAccountKey));
-            if (string.IsNullOrWhiteSpace(targetContainerName)) throw new ArgumentNullException(nameof(targetContainerName));
+            if (sourceContainers == null || !sourceContainers.Any())
+            {
+                throw new ArgumentNullException(nameof(sourceContainers));
+            }
+
+            if (string.IsNullOrWhiteSpace(targetAccountName))
+            {
+                throw new ArgumentNullException(nameof(targetAccountName));
+            }
+
+            if (string.IsNullOrWhiteSpace(targetAccountKey))
+            {
+                throw new ArgumentNullException(nameof(targetAccountKey));
+            }
+
+            if (string.IsNullOrWhiteSpace(targetContainerName))
+            {
+                throw new ArgumentNullException(nameof(targetContainerName));
+            }
 
             await CreateBlobContainerIfItDoesntExist(targetAccountName, targetAccountKey, targetContainerName);
 
-            logger?.LogInformation($"BackupBlobStorage - From: {sourceAccountName}, Containers: {string.Join(", ", sourceContainers)} to {targetAccountName}/{targetContainerName}");
+            this.logger?.LogInformation($"BackupBlobStorage - From: {this.sourceAccountName}, Containers: {string.Join(", ", sourceContainers)} to {targetAccountName}/{targetContainerName}");
 
             foreach (var sourcContainer in sourceContainers)
             {
-                var arguments = $@"/source:https://{sourceAccountName}.blob.core.windows.net/{sourcContainer} /sourceKey:{sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/ /Destkey:{targetAccountKey} /S /Y";
-                await RunAzCopyAsync(locationOfAzCopy, arguments);
+                var arguments = $@"/source:https://{this.sourceAccountName}.blob.core.windows.net/{sourcContainer} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/ /Destkey:{targetAccountKey} /S /Y";
+                await RunAzCopyAsync(this.locationOfAzCopy, arguments);
             }
-            logger?.LogInformation("Done");
+            this.logger?.LogInformation("Done");
         }
 
         private async Task RunAzCopyAsync(string locationOfAzCopy, string arguments)
@@ -115,12 +155,12 @@
 
                 if (!string.IsNullOrEmpty(infoMessage))
                 {
-                    logger?.LogInformation(infoMessage);
+                    this.logger?.LogInformation(infoMessage);
                 }
 
                 if (!string.IsNullOrEmpty(errorMessage))
                 {
-                    logger?.LogError(errorMessage);
+                    this.logger?.LogError(errorMessage);
                     // An error was logged by the external program. Throw this as exception for this task.
                     throw new OperationCanceledException(errorMessage);
                 }
@@ -145,7 +185,7 @@
                 var connectionString = $"DefaultEndpointsProtocol=https;AccountName={targetAccountName};AccountKey={targetAccountKey};EndpointSuffix=core.windows.net";
                 var cloudStorageAccount = CloudStorageAccount.Parse(connectionString);
 
-                var cloudBlobClient = cloudStorageAccount.CreateCloudBlobClient();
+                CloudBlobClient cloudBlobClient = cloudStorageAccount.CreateCloudBlobClient();
                 blobContainer = cloudBlobClient.GetContainerReference(containerName);
                 await blobContainer.CreateIfNotExistsAsync();
             }
