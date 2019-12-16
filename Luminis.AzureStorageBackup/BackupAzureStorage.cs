@@ -93,7 +93,7 @@
             foreach (var sourceTable in sourceTables)
             {
                 var arguments = $@"/source:https://{this.sourceAccountName}.table.core.windows.net/{sourceTable} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder} /Destkey:{targetAccountKey} /Y";
-                RunAzCopyAsync(this.locationOfAzCopy, arguments);
+                RunAzCopy(this.locationOfAzCopy, arguments);
             }
             this.logger?.LogInformation("BackupAzureTablesToBlobStorage - Done");
         }
@@ -133,15 +133,17 @@
 
             this.logger?.LogInformation($"BackupBlobStorage - From: {this.sourceAccountName}, Containers: {string.Join(", ", sourceContainers)} to {targetAccountName}/{targetContainerName}");
 
-            foreach (var sourcContainer in sourceContainers)
+            string timestamp = DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ");
+
+            foreach (var sourceContainer in sourceContainers)
             {
-                var arguments = $@"/source:https://{this.sourceAccountName}.blob.core.windows.net/{sourcContainer} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder} /Destkey:{targetAccountKey} /S /Y";
-                RunAzCopyAsync(this.locationOfAzCopy, arguments);
+                var arguments = $@"/source:https://{this.sourceAccountName}.blob.core.windows.net/{sourceContainer} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder}/{sourceContainer}/{timestamp} /Destkey:{targetAccountKey} /S /Y";
+                RunAzCopy(this.locationOfAzCopy, arguments);
             }
             this.logger?.LogInformation("Done");
         }
 
-        private void RunAzCopyAsync(string locationOfAzCopy, string arguments)
+        private void RunAzCopy(string locationOfAzCopy, string arguments)
         {
             lock (azcopyRunning)
             {

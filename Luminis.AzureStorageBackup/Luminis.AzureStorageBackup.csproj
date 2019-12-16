@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <PackageId>Luminis.AzureStorageBackup</PackageId>
-    <Version>0.1.13</Version>
+    <Version>0.1.14</Version>
     <Authors>Hilmar Jansen</Authors>
     <Company>Luminis Arnhem</Company>
     <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
