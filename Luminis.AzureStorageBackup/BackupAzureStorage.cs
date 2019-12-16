@@ -8,6 +8,7 @@
     using System.Diagnostics;
     using System.IO;
     using System.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
 
     public class BackupAzureStorage
@@ -19,14 +20,16 @@
         private readonly string sourceAccountKey;
         private static CloudBlobContainer blobContainer;
         private readonly string locationOfAzCopy;
+        private static readonly object azcopyRunning = new object();
 
         /// <summary>
         /// Constructor for BackupAzureStorage.
         /// </summary>
         /// <param name="logger">The logger to use.</param>
         /// <param name="sourceAccountName">The name of the storage account that holds the tables and blobs that should be backuped.</param>
-        /// <param name="sourceKey">The key of the storage account.</param>
-        public BackupAzureStorage(ILogger logger, string rootDir, string sourceAccountName, string sourceAccountKey)
+        /// <param name="sourceAccountKey">The key of the storage account.</param>
+        /// <param name="rootDir">Optional rootdir where AzCopy can be found.</param>
+        public BackupAzureStorage(ILogger logger, string sourceAccountName, string sourceAccountKey, string rootDir = null)
         {
             if (string.IsNullOrWhiteSpace(sourceAccountName))
             {
@@ -40,8 +43,13 @@
 
             this.logger = logger;
 
+            if (string.IsNullOrWhiteSpace(rootDir))
+            {
+                rootDir = Directory.GetCurrentDirectory();
+            }
+
             this.locationOfAzCopy = Directory.GetFiles(rootDir, "azcopy.exe", SearchOption.AllDirectories).First();
-            logger?.LogInformation($"Using azcopy from {locationOfAzCopy}.");
+            logger?.LogInformation($"Using azcopy from {this.locationOfAzCopy}.");
 
             this.sourceAccountName = sourceAccountName;
             this.sourceAccountKey = sourceAccountKey;
@@ -54,8 +62,9 @@
         /// <param name="targetAccountName">The name of the storage account to backup to.</param>
         /// <param name="targetAccountKey">The (SAS) key of the storage account to backup to.</param>
         /// <param name="targetContainerName">The name of the container to backup to.</param>
+        /// <param name="subFolder">Optional subfolder where files are placed</param>
         /// <returns></returns>
-        public async Task BackupAzureTablesToBlobStorage(IEnumerable<string> sourceTables, string targetAccountName, string targetAccountKey, string targetContainerName)
+        public async Task BackupAzureTablesToBlobStorage(IEnumerable<string> sourceTables, string targetAccountName, string targetAccountKey, string targetContainerName, string subFolder = null)
         {
             if (sourceTables == null || !sourceTables.Any())
             {
@@ -83,9 +92,8 @@
 
             foreach (var sourceTable in sourceTables)
             {
-                var arguments = $@"/source:https://{this.sourceAccountName}.table.core.windows.net/{sourceTable} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/ /Destkey:{targetAccountKey} /Y";
-
-                await RunAzCopyAsync(this.locationOfAzCopy, arguments);
+                var arguments = $@"/source:https://{this.sourceAccountName}.table.core.windows.net/{sourceTable} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder} /Destkey:{targetAccountKey} /Y";
+                RunAzCopy(this.locationOfAzCopy, arguments);
             }
             this.logger?.LogInformation("BackupAzureTablesToBlobStorage - Done");
         }
@@ -97,8 +105,9 @@
         /// <param name="targetAccountName">The name of the storage account to backup to.</param>
         /// <param name="targetAccountKey">The (SAS) key of the storage account to backup to.</param>
         /// <param name="targetContainerName">The name of the container to backup to.</param>
+        /// <param name="subFolder">Optional subfolder where files are placed</param>
         /// <returns></returns>
-        public async Task BackupBlobStorage(IEnumerable<string> sourceContainers, string targetAccountName, string targetAccountKey, string targetContainerName)
+        public async Task BackupBlobStorage(IEnumerable<string> sourceContainers, string targetAccountName, string targetAccountKey, string targetContainerName, string subFolder = null)
         {
             if (sourceContainers == null || !sourceContainers.Any())
             {
@@ -124,48 +133,54 @@
 
             this.logger?.LogInformation($"BackupBlobStorage - From: {this.sourceAccountName}, Containers: {string.Join(", ", sourceContainers)} to {targetAccountName}/{targetContainerName}");
 
-            foreach (var sourcContainer in sourceContainers)
+            string timestamp = DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ");
+
+            foreach (var sourceContainer in sourceContainers)
             {
-                var arguments = $@"/source:https://{this.sourceAccountName}.blob.core.windows.net/{sourcContainer} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/ /Destkey:{targetAccountKey} /S /Y";
-                await RunAzCopyAsync(this.locationOfAzCopy, arguments);
+                var arguments = $@"/source:https://{this.sourceAccountName}.blob.core.windows.net/{sourceContainer} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder}/{sourceContainer}/{timestamp} /Destkey:{targetAccountKey} /S /Y";
+                RunAzCopy(this.locationOfAzCopy, arguments);
             }
             this.logger?.LogInformation("Done");
         }
 
-        private async Task RunAzCopyAsync(string locationOfAzCopy, string arguments)
+        private void RunAzCopy(string locationOfAzCopy, string arguments)
         {
-            using (var proc = new Process
+            lock (azcopyRunning)
             {
-                StartInfo = new ProcessStartInfo
+                using (var proc = new Process
                 {
-                    FileName = locationOfAzCopy,
-                    Arguments = arguments,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
-            })
-            {
-                proc.Start();
-                proc.WaitForExit();
-
-                var infoMessage = GetMessageFromOutput(proc.StandardOutput);
-                var errorMessage = GetMessageFromOutput(proc.StandardError);
-
-                if (!string.IsNullOrEmpty(infoMessage))
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = locationOfAzCopy,
+                        Arguments = arguments,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    }
+                })
                 {
-                    this.logger?.LogInformation(infoMessage);
-                }
+                    proc.Start();
+                    proc.WaitForExit();
 
-                if (!string.IsNullOrEmpty(errorMessage))
-                {
-                    this.logger?.LogError(errorMessage);
-                    // An error was logged by the external program. Throw this as exception for this task.
-                    throw new OperationCanceledException(errorMessage);
+                    var infoMessage = GetMessageFromOutput(proc.StandardOutput);
+                    var errorMessage = GetMessageFromOutput(proc.StandardError);
+
+                    if (!string.IsNullOrEmpty(infoMessage))
+                    {
+                        this.logger?.LogInformation(infoMessage);
+                    }
+
+                    if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        this.logger?.LogError(errorMessage);
+                        // An error was logged by the external program. Throw this as exception for this task.
+                        throw new OperationCanceledException(errorMessage);
+                    }
                 }
+                // Delay to allow the release of the AZCopy temporary files
+                Thread.Sleep(AzCopyDelay);
             }
-            await Task.Delay(AzCopyDelay);
         }
 
         private static string GetMessageFromOutput(StreamReader outputStream)
