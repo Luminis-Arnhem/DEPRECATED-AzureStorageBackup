@@ -1,53 +1,84 @@
-# Introduction 
-This is the repository that contains AzureStorageBackup functionality.
+# .NET backup package for Azure Storage accounts
+This package can be used to backup tables and blobs in Azure.
 
-# Getting Started
-1. Pull code
-2. Restore packages
-3. Build solution
+It supports .NET Core and the .NET Framework.
 
-# Build and Test
-Run dotnet pack to generate a nuget package
+AzCopy 7.3 is used to create the backups, later version don't support table storage.
 
-# How to restore table storage
-This cannot be done using the package. 
-    AzCopy /Source:https://myaccount.blob.core.windows.net/mycontainer/
-            /SourceKey:key1
-            /Dest:https://myaccount.table.core.windows.net/mytable/ 
-            /DestKey:key2 
-            /Manifest:"myaccount_mytable_20140103T112020.manifest"
-            /EntityOperation:InsertOrMerge
+# Installation
+Download and install the package from [NuGet]('https://www.nuget.org/packages/Luminis.AzureStorageBackup').
+The package will install, and AzCopy 7.3 is added to the project.
 
-# How to create a backup
+# Backup
+## Initialize the client
 
-## Initialize the backup storage client
-* log should either be null or an implementation of ILogger
+```cs
+var backupAzureStorage = new Luminis.AzureStorageBackup.BackupAzureStorage(sourceAccountName, sourceAccountKey);
+```
+
 * sourceAccountName: the name of the storage account, no connectionstring or url
 * sourceAccountKey: the SAS key as can be retrieved for the Azure Portal
-* rootDir: the folder under which AzCopy can be found. When running in an Azure Function, pass the ExecutionContext.FunctionAppDirectory, which is the base folder where the Azure Function is installed
+* log (optional): an implementation of ILogger
+* rootDir (optional): the folder under which AzCopy can be found. 
+  * If left empty the default executable location will be used using Directory.GetCurrentDirectory()
+  * When running in an Azure Function, pass the ExecutionContext.FunctionAppDirectory, which is the base folder where the Azure Function is installed
 
-var backupAzureStorage = new Luminis.AzureStorageBackup.BackupAzureStorage(log, sourceAccountName, sourceAccountKey);
+## Table storage
 
-## Backup table storage
+```cs
+await backupAzureStorage.BackupAzureTablesToBlobStorage(sourceTables, destinationAccountName, destinationKey, destinationContainerName, subfolder);
+```
 * sourceTables: a list of string (ie: new [] { "table1", "table2" })
 * destinationAccountName: the name of the storage account, no connectionstring or url
 * destinationAccountKey: the SAS key as can be retrieved for the Azure Portal
 * destinationContainerName: the name of the container where the backup should go to. This container is created if it does not exist yet.
 * subfolder: optional folder, useful to distinct different backup-types (for example: "tables")
 
-await backupAzureStorage.BackupAzureTablesToBlobStorage(sourceTables, destinationAccountName, destinationKey, destinationContainerName, subfolder);
-
 When backing up table storage, the files will be stored in the following directory
 destinationContainerName[\subfolder]\
 
-## Backup blob storage
+## Blob storage
+
+
+```cs
+await backupAzureStorage.BackupBlobStorage(containers, destinationAccountName, destinationKey, destinationContainerName, subfolder);
+```
+
 * sourceContainers: a list of string (ie: new [] { "container1", "container2" })
 * destinationAccountName: the name of the storage account, no connectionstring or url
 * destinationAccountKey: the SAS key as can be retrieved for the Azure Portal
 * destinationContainerName: the name of the container where the backup should go to. This container is created if it does not exist yet.
 * subfolder: optional folder, useful to distinct different backup-types (for example: "blobs")
 
-await backupAzureStorage.BackupBlobStorage(containers, destinationAccountName, destinationKey, destinationContainerName, subfolder);
-
 When backing up blob storage, the files will be stored in the following directory
 destinationContainerName[\subfolder]\sourceContainerName\timestamp\
+
+# Restore
+## Table storage
+This cannot be done using the package. But can be done using AzCopy that is shipped with the package and can be found the azcopy foder.
+<pre><code>AzCopy /Source:https://myaccount.blob.core.windows.net/mycontainer/
+            /SourceKey:key1
+            /Dest:https://myaccount.table.core.windows.net/mytable/ 
+            /DestKey:key2 
+            /Manifest:"myaccount_mytable_20140103T112020.manifest"
+            /EntityOperation:InsertOrMerge</code></pre>
+## Blob storage
+The blob backups are nothing more then a copy of the original blobs, stored in the desired location.
+
+To restore these, any blob storage tool can be used such as:
+- [AzCopy]('https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10') (any version) 
+- [Azure Storage explorder]('https://azure.microsoft.com/en-us/features/storage-explorer/')
+- [Rest API]('https://docs.microsoft.com/en-us/rest/api/storageservices/blob-service-rest-api')
+
+# Make changes
+1. Pull code
+2. Restore packages
+3. Build solution
+
+## Build and Test
+Run dotnet pack to generate a nuget package
+
+## Contribute
+If you like to contribute, make a fork and submit a pull-request. 
+
+Or get in touch.
