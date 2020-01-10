@@ -28,10 +28,8 @@
         /// <param name="sourceAccountName">The name of the storage account that holds the tables and blobs that should be backuped.</param>
         /// <param name="sourceAccountKey">The key of the storage account.</param>
         /// <param name="logger">The logger to use.</param>
-        /// <param name="sourceAccountName">The name of the storage account that holds the tables and blobs that should be backuped.</param>
-        /// <param name="sourceAccountKey">The key of the storage account.</param>
         /// <param name="rootDir">Optional rootdir where AzCopy can be found.</param>
-        public BackupAzureStorage(ILogger logger, string sourceAccountName, string sourceAccountKey, string rootDir = null)
+        public BackupAzureStorage(string sourceAccountName, string sourceAccountKey, ILogger logger = null, string rootDir = null)
         {
             if (string.IsNullOrWhiteSpace(sourceAccountName))
             {
