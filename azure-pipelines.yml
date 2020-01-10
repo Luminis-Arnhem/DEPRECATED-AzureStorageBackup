@@ -6,7 +6,6 @@
 trigger:
 - master
 - develop
-- release/*
 
 variables:
   artifactName: Luminis.AzureStorageBackup
