@@ -5,6 +5,13 @@ It supports .NET Core and the .NET Framework.
 
 AzCopy 7.3 is used to create the backups, later version don't support table storage.
 
+Version |Build Status|Branch
+---|---|---
+release|![Build Status](https://luminisarnhem.visualstudio.com/DGO/_apis/build/status/Luminis-Arnhem.Luminis.AzureStorageBackup?branchName=master)|master
+pre-release|![Build Status](https://luminisarnhem.visualstudio.com/DGO/_apis/build/status/Luminis-Arnhem.Luminis.AzureStorageBackup?branchName=develop)|develop
+
+---
+
 # Installation
 Download and install the package from [NuGet]('https://www.nuget.org/packages/Luminis.AzureStorageBackup').
 The package will install, and AzCopy 7.3 is added to the project.
