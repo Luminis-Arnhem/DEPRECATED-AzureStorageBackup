@@ -13,6 +13,7 @@
     public class BackupAzureStorage
     {
         private readonly ILogger logger;
+        private string journalFileFolder;
         private readonly string sourceAccountName;
         private readonly string sourceAccountKey;
         private static CloudBlobContainer blobContainer;
@@ -50,6 +51,9 @@
                 throw new Exception($"AzCopy.exe not found in {rootDir}");
             }
             logger?.LogInformation($"Using azcopy from {this.locationOfAzCopy}.");
+
+
+            this.journalFileFolder = $@"{Environment.GetEnvironmentVariable("LocalAppData")}\Luminis AzureStorageBackup\{Guid.NewGuid()}";
 
             this.sourceAccountName = sourceAccountName;
             this.sourceAccountKey = sourceAccountKey;
@@ -90,11 +94,9 @@
 
             this.logger?.LogInformation($"BackupAzureTablesToBlobStorage - From: {this.sourceAccountName}, Tables: {string.Join(", ", sourceTables)} to {targetAccountName}/{targetContainerName}");
 
-            string journalFileFolder = $@"{Environment.GetEnvironmentVariable("LocalAppData")}\{Guid.NewGuid()}";
-
             foreach (var sourceTable in sourceTables)
             {
-                var arguments = $@"/source:https://{this.sourceAccountName}.table.core.windows.net/{sourceTable} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder} /Destkey:{targetAccountKey} /Z:{journalFileFolder} /Y";
+                var arguments = $@"/source:https://{this.sourceAccountName}.table.core.windows.net/{sourceTable} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder} /Destkey:{targetAccountKey} /Z:{this.journalFileFolder} /Y";
                 RunAzCopy(this.locationOfAzCopy, arguments);
             }
             this.logger?.LogInformation("BackupAzureTablesToBlobStorage - Done");
@@ -139,7 +141,7 @@
 
             foreach (var sourceContainer in sourceContainers)
             {
-                var arguments = $@"/source:https://{this.sourceAccountName}.blob.core.windows.net/{sourceContainer} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder}/{sourceContainer}/{timestamp} /Destkey:{targetAccountKey} /S /Y";
+                var arguments = $@"/source:https://{this.sourceAccountName}.blob.core.windows.net/{sourceContainer} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder}/{sourceContainer}/{timestamp} /Destkey:{targetAccountKey} /Z:{this.journalFileFolder} /S /Y";
                 RunAzCopy(this.locationOfAzCopy, arguments);
             }
             this.logger?.LogInformation("Done");
