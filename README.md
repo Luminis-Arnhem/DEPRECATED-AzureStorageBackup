@@ -16,6 +16,9 @@ pre-release|![Build Status](https://luminisarnhem.visualstudio.com/DGO/_apis/bui
 Download and install the package from [NuGet]('https://www.nuget.org/packages/Luminis.AzureStorageBackup').
 The package will install, and AzCopy 7.3 is added to the project.
 
+## Sample app
+You can run the sample application to get an idea of how the it works. You need to provide an account name and key, of an azure storage account.
+
 # Backup
 ## Initialize the client
 
@@ -46,7 +49,6 @@ destinationContainerName[\subfolder]\
 
 ## Blob storage
 
-
 ```cs
 await backupAzureStorage.BackupBlobStorage(containers, destinationAccountName, destinationKey, destinationContainerName, subfolder);
 ```
@@ -76,6 +78,9 @@ To restore these, any blob storage tool can be used such as:
 - [AzCopy]('https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10') (any version) 
 - [Azure Storage explorder]('https://azure.microsoft.com/en-us/features/storage-explorer/')
 - [Rest API]('https://docs.microsoft.com/en-us/rest/api/storageservices/blob-service-rest-api')
+
+# Remarks
+* Does not work with the storage emulator yet.
 
 # Make changes
 1. Pull code

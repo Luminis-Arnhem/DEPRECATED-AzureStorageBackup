@@ -8,19 +8,16 @@
     using System.Diagnostics;
     using System.IO;
     using System.Linq;
-    using System.Threading;
     using System.Threading.Tasks;
 
     public class BackupAzureStorage
     {
-        private const int AzCopyDelay = 1000;
-
         private readonly ILogger logger;
+        private string journalFileFolder;
         private readonly string sourceAccountName;
         private readonly string sourceAccountKey;
         private static CloudBlobContainer blobContainer;
         private readonly string locationOfAzCopy;
-        private static readonly object azcopyRunning = new object();
 
         /// <summary>
         /// Constructor for BackupAzureStorage.
@@ -48,8 +45,15 @@
                 rootDir = Directory.GetCurrentDirectory();
             }
 
-            this.locationOfAzCopy = Directory.GetFiles(rootDir, "azcopy.exe", SearchOption.AllDirectories).First();
+            this.locationOfAzCopy = Directory.GetFiles(rootDir, "azcopy.exe", SearchOption.AllDirectories).FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(this.locationOfAzCopy))
+            {
+                throw new Exception($"AzCopy.exe not found in {rootDir}");
+            }
             logger?.LogInformation($"Using azcopy from {this.locationOfAzCopy}.");
+
+
+            this.journalFileFolder = $@"{Environment.GetEnvironmentVariable("LocalAppData")}\Luminis AzureStorageBackup\{Guid.NewGuid()}";
 
             this.sourceAccountName = sourceAccountName;
             this.sourceAccountKey = sourceAccountKey;
@@ -92,7 +96,7 @@
 
             foreach (var sourceTable in sourceTables)
             {
-                var arguments = $@"/source:https://{this.sourceAccountName}.table.core.windows.net/{sourceTable} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder} /Destkey:{targetAccountKey} /Y";
+                var arguments = $@"/source:https://{this.sourceAccountName}.table.core.windows.net/{sourceTable} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder} /Destkey:{targetAccountKey} /Z:{this.journalFileFolder} /Y";
                 RunAzCopy(this.locationOfAzCopy, arguments);
             }
             this.logger?.LogInformation("BackupAzureTablesToBlobStorage - Done");
@@ -137,7 +141,7 @@
 
             foreach (var sourceContainer in sourceContainers)
             {
-                var arguments = $@"/source:https://{this.sourceAccountName}.blob.core.windows.net/{sourceContainer} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder}/{sourceContainer}/{timestamp} /Destkey:{targetAccountKey} /S /Y";
+                var arguments = $@"/source:https://{this.sourceAccountName}.blob.core.windows.net/{sourceContainer} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder}/{sourceContainer}/{timestamp} /Destkey:{targetAccountKey} /Z:{this.journalFileFolder} /S /Y";
                 RunAzCopy(this.locationOfAzCopy, arguments);
             }
             this.logger?.LogInformation("Done");
@@ -145,41 +149,37 @@
 
         private void RunAzCopy(string locationOfAzCopy, string arguments)
         {
-            lock (azcopyRunning)
+            using (var proc = new Process
             {
-                using (var proc = new Process
+                StartInfo = new ProcessStartInfo
                 {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = locationOfAzCopy,
-                        Arguments = arguments,
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        CreateNoWindow = true
-                    }
-                })
-                {
-                    proc.Start();
-                    proc.WaitForExit();
-
-                    var infoMessage = GetMessageFromOutput(proc.StandardOutput);
-                    var errorMessage = GetMessageFromOutput(proc.StandardError);
-
-                    if (!string.IsNullOrEmpty(infoMessage))
-                    {
-                        this.logger?.LogInformation(infoMessage);
-                    }
-
-                    if (!string.IsNullOrEmpty(errorMessage))
-                    {
-                        this.logger?.LogError(errorMessage);
-                        // An error was logged by the external program. Throw this as exception for this task.
-                        throw new OperationCanceledException(errorMessage);
-                    }
+                    FileName = locationOfAzCopy,
+                    Arguments = arguments,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
                 }
-                // Delay to allow the release of the AZCopy temporary files
-                Thread.Sleep(AzCopyDelay);
+            })
+            {
+                proc.Start();
+                proc.WaitForExit();
+
+                var infoMessage = GetMessageFromOutput(proc.StandardOutput);
+                var errorMessage = GetMessageFromOutput(proc.StandardError);
+
+                if (!string.IsNullOrEmpty(infoMessage))
+                {
+                    this.logger?.LogInformation(infoMessage);
+                }
+
+                if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    this.logger?.LogError(errorMessage);
+                    // An error was logged by the external program. Throw this as exception for this task.
+                    throw new OperationCanceledException(errorMessage);
+                }
+
             }
         }
 

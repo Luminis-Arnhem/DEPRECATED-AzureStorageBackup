@@ -3,12 +3,14 @@
   <PropertyGroup>
     <PackageId>Luminis.AzureStorageBackup</PackageId>
     <Version>0.1.14</Version>
-    <Authors>Hilmar Jansen</Authors>
+    <Authors>Luminis Arnhem</Authors>
     <Company>Luminis Arnhem</Company>
     <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
     <AssemblyName>Luminis.AzureStorageBackup</AssemblyName>
     <RootNamespace>Luminis.AzureStorageBackup</RootNamespace>
     <Description>Package for backing up Azure Storage</Description>
+    <PackageProjectUrl>https://github.com/Luminis-Arnhem/AzureStorageBackup/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Luminis-Arnhem/AzureStorageBackup/</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
@@ -18,7 +20,6 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.2.0" />
-    <PackageReference Include="WindowsAzure.Storage" Version="9.3.3" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,5 +28,9 @@
       <PackagePath>contentFiles\any\any\azcopy\</PackagePath>
       <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WindowsAzure.Storage" Version="9.3.3" />
   </ItemGroup>
 </Project>
