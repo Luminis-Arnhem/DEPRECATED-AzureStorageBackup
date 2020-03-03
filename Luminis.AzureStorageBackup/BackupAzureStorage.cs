@@ -92,11 +92,11 @@
 
             await CreateBlobContainerIfItDoesntExist(targetAccountName, targetAccountKey, targetContainerName);
 
-            this.logger?.LogInformation($"BackupAzureTablesToBlobStorage - From: {this.sourceAccountName}, Tables: {string.Join(", ", sourceTables)} to {targetAccountName}/{targetContainerName}");
+            this.logger?.LogInformation($"BackupAzureTablesToBlobStorage - From: {this.sourceAccountName}, Tables: {string.Join(", ", sourceTables)} to {targetAccountName}/{targetContainerName} using journalFolder {this.journalFileFolder}");
 
             foreach (var sourceTable in sourceTables)
             {
-                var arguments = $@"/source:https://{this.sourceAccountName}.table.core.windows.net/{sourceTable} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder} /Destkey:{targetAccountKey} /Z:{this.journalFileFolder} /Y";
+                var arguments = $@"/source:https://{this.sourceAccountName}.table.core.windows.net/{sourceTable} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder} /Destkey:{targetAccountKey} /Z:""{this.journalFileFolder}"" /Y";
                 RunAzCopy(this.locationOfAzCopy, arguments);
             }
             this.logger?.LogInformation("BackupAzureTablesToBlobStorage - Done");
@@ -135,13 +135,13 @@
 
             await CreateBlobContainerIfItDoesntExist(targetAccountName, targetAccountKey, targetContainerName);
 
-            this.logger?.LogInformation($"BackupBlobStorage - From: {this.sourceAccountName}, Containers: {string.Join(", ", sourceContainers)} to {targetAccountName}/{targetContainerName}");
+            this.logger?.LogInformation($"BackupBlobStorage - From: {this.sourceAccountName}, Containers: {string.Join(", ", sourceContainers)} to {targetAccountName}/{targetContainerName} using journalFolder {this.journalFileFolder}");
 
             string timestamp = DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ");
 
             foreach (var sourceContainer in sourceContainers)
             {
-                var arguments = $@"/source:https://{this.sourceAccountName}.blob.core.windows.net/{sourceContainer} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder}/{sourceContainer}/{timestamp} /Destkey:{targetAccountKey} /Z:{this.journalFileFolder} /S /Y";
+                var arguments = $@"/source:https://{this.sourceAccountName}.blob.core.windows.net/{sourceContainer} /sourceKey:{this.sourceAccountKey} /dest:https://{targetAccountName}.blob.core.windows.net/{targetContainerName}/{subFolder}/{sourceContainer}/{timestamp} /Destkey:{targetAccountKey} /Z:""{this.journalFileFolder}"" /S /Y";
                 RunAzCopy(this.locationOfAzCopy, arguments);
             }
             this.logger?.LogInformation("Done");
