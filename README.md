@@ -1,3 +1,8 @@
+# Deprecated
+This project will not be maintened, we recommend using the now inclused Blob Back-up function.
+https://learn.microsoft.com/en-us/azure/backup/blob-backup-overview?tabs=operational-backup
+
+
 # .NET backup package for Azure Storage accounts
 This package can be used to backup tables and blobs in Azure.
 
